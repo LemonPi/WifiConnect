@@ -18,6 +18,7 @@ std::wstring getProgramUserPath(const wchar_t* programName, const wchar_t* exten
 	}
 
 	auto p = std::wstring(path) + L'\\' + programName;
+	CoTaskMemFree(path);
 	if (extension != nullptr) {
 		p += extension;
 	}
@@ -28,33 +29,35 @@ std::wstring getProgramUserPath(const wchar_t* programName, const wchar_t* exten
 std::string currentDateTime() {
 	SYSTEMTIME st;
 	GetLocalTime(&st);
-	std::string currentTime = std::to_string(st.wDay) + '/';
-	currentTime += std::to_string(st.wMonth) + '/';
-	currentTime += std::to_string(st.wYear) + "  ";
-	currentTime += std::to_string(st.wHour) + ':';
-	currentTime += std::to_string(st.wMinute) + ':';
-	currentTime += std::to_string(st.wSecond);
+
+	std::string currentTime( 20, ' ' );
+	currentTime.resize(snprintf(&currentTime[0], currentTime.size(), "%.02d/%.02d/%.04d %.02d:%.02d:%.02d",
+		st.wDay, st.wMonth, st.wYear, st.wHour, st.wMinute, st.wSecond));
 	return currentTime;
 }
 
 
-std::string stateToString(WLAN_INTERFACE_STATE state) {
-	static const std::unordered_map<WLAN_INTERFACE_STATE, std::string> map({
-		{wlan_interface_state_not_ready, "Not ready"},
-		{wlan_interface_state_connected, "Connected"},
-		{wlan_interface_state_ad_hoc_network_formed, "First node in an ad hoc netowrk"},
-		{wlan_interface_state_disconnecting, "Disconnecting"},
-		{wlan_interface_state_disconnected, "Not connected"},
-		{wlan_interface_state_associating, "Attempting to associate with a network"},
-		{wlan_interface_state_discovering, "Auto configuration is discovering settings for the network"},
-		{wlan_interface_state_authenticating, "In process of authenticating"}
-		});
-
-	const auto foundState = map.find(state);
-	if (foundState == map.end()) {
+const char * stateToString(WLAN_INTERFACE_STATE state) {
+	switch (state) {
+	case wlan_interface_state_not_ready:
+		return "Not ready";
+	case wlan_interface_state_connected:
+		return "Connected";
+	case wlan_interface_state_ad_hoc_network_formed:
+		return "First node in an ad hoc netowrk";
+	case wlan_interface_state_disconnecting:
+		return "Disconnecting";
+	case wlan_interface_state_disconnected:
+		return "Not connected";
+	case wlan_interface_state_associating:
+		return "Attempting to associate with a network";
+	case wlan_interface_state_discovering:
+		return "Auto configuration is discovering settings for the network";
+	case wlan_interface_state_authenticating:
+		return "In process of authenticating";
+	default:
 		return "Unknown state";
 	}
-	return foundState->second;
 }
 
 void printInterfaces(PWLAN_INTERFACE_INFO_LIST pIfList, std::ostream& log) {
@@ -80,13 +83,7 @@ void printInterfaces(PWLAN_INTERFACE_INFO_LIST pIfList, std::ostream& log) {
 }
 
 std::string getNetworkSsidString(const WLAN_AVAILABLE_NETWORK* network) {
-	auto ssid = std::string();
-	if (network->dot11Ssid.uSSIDLength) {
-		for (int k = 0; k < (int)network->dot11Ssid.uSSIDLength; ++k) {
-			ssid += (char)network->dot11Ssid.ucSSID[k];
-		}
-	}
-	return ssid;
+	return std::string( ( const char * ) network->dot11Ssid.ucSSID, network->dot11Ssid.uSSIDLength);
 }
 
 void printNetworkList(PWLAN_AVAILABLE_NETWORK_LIST pBssList, std::ostream& log) {
